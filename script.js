@@ -1,7 +1,6 @@
 let generatedActivity = "";
 let currentActivity = "";
 
-// Add this function at the beginning of the file
 function initializeEventListeners() {
     document.getElementById('homeLink').addEventListener('click', function(e) {
         e.preventDefault();
@@ -40,7 +39,7 @@ function initializeEventListeners() {
             button.classList.add('pressed');
             showOptions(button.id.replace('Btn', '').toLowerCase());
             resetBtn.classList.remove('hidden');
-            // Reset the result div and disable translate button
+
             document.getElementById('result').innerHTML = '';
             document.getElementById('translateButton').disabled = true;
             generatedActivity = '';
@@ -58,6 +57,45 @@ function initializeEventListeners() {
     
     document.getElementById('loadActivityBtn').addEventListener('click', sendQuery);
     document.getElementById('translateButton').addEventListener('click', translateAndListen);
+
+
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        const selectedText = window.getSelection().toString();
+        const menu = document.createElement('div');
+        menu.innerHTML = '<div style="cursor:pointer;padding:5px;background:white;border:1px solid black;">Copy</div>';
+        menu.style.position = 'fixed';
+        menu.style.zIndex = '1000';
+        menu.style.left = e.clientX + 'px';
+        menu.style.top = e.clientY + 'px';
+        document.body.appendChild(menu);
+
+        menu.firstChild.addEventListener('click', function() {
+            if (selectedText) {
+                navigator.clipboard.writeText(selectedText).then(() => {
+                    console.log('Text copied to clipboard');
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                });
+            }
+            document.body.removeChild(menu);
+        });
+
+        document.addEventListener('click', function removeMenu() {
+            if (menu && menu.parentNode) {
+                document.body.removeChild(menu);
+            }
+            document.removeEventListener('click', removeMenu);
+        });
+    }, false);
+
+    
+    document.onkeydown = function(e) {
+        if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+            e.preventDefault();
+            return false;
+        }
+    };
 }
 
 function hideAllContent() {
@@ -65,19 +103,7 @@ function hideAllContent() {
     contents.forEach(content => document.getElementById(content).classList.add('hidden'));
 }
 
-// ... rest of the JavaScript code ...
 
-// Context menu and key disable code
-document.addEventListener('contextmenu', function(e) {
-    // ... existing code ...
-});
-
-// Disable F12 key and Ctrl+Shift+I
-document.onkeydown = function(e) {
-    // ... existing code ...
-};
-
-// Add this at the end of the file
 document.addEventListener('DOMContentLoaded', initializeEventListeners);
 
 function showOptions(type) {
@@ -106,7 +132,6 @@ async function sendQuery() {
     const loadActivityBtn = document.getElementById('loadActivityBtn');
     let query = "";
 
-    // Add loading indicator
     resultDiv.innerHTML = `
         <div style="text-align: center; margin-bottom: 20px;">
             <div class="bouncing-loader">
@@ -141,7 +166,7 @@ async function sendQuery() {
         query = `In html, create a 10 question ${currentActivity} ${keywordPhrase} worksheet (with emoticons) for UK national curriculum ${document.getElementById('UKNationalCurriculumLevel').value}. Then at the bottom of the page write the answers.`;
     }
 
-    const API_KEY = window.API_KEY; // This line is correct, but let's add a check
+    const API_KEY = window.API_KEY; 
 
     if (!API_KEY) {
         resultDiv.innerHTML = 'Error: API key is not defined. Please check your configuration.';
@@ -173,7 +198,6 @@ async function sendQuery() {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(htmlContent[0], 'text/html');
                 
-                // Extract and execute scripts
                 const scripts = doc.getElementsByTagName('script');
                 for (let script of scripts) {
                     const scriptContent = script.textContent;
@@ -182,23 +206,21 @@ async function sendQuery() {
                     document.body.appendChild(newScript);
                 }
 
-                // Remove script tags from the HTML content
                 for (let script of scripts) {
                     script.parentNode.removeChild(script);
                 }
 
-                // Remove excessive whitespace while preserving paragraph breaks
                 let cleanedHtml = doc.body.innerHTML
                     .replace(/>\s+</g, '><')
                     .replace(/\n\s*/g, '\n')
-                    .replace(/<\/p><p>/g, '</p>\n<p>')  // Preserve line breaks between paragraphs
+                    .replace(/<\/p><p>/g, '</p>\n<p>')  
                     .trim();
 
                 resultDiv.innerHTML = cleanedHtml;
                 generatedActivity = cleanedHtml;
                 translateButton.disabled = false;
 
-                // Add print and save buttons
+                
                 const buttonContainer = document.createElement('div');
                 buttonContainer.style.marginTop = '20px';
                 buttonContainer.style.display = 'flex';
@@ -209,7 +231,7 @@ async function sendQuery() {
                 `;
                 resultDiv.appendChild(buttonContainer);
 
-                // Print functionality
+                
                 document.getElementById('printBtn').addEventListener('click', () => {
                     const printWindow = window.open('', '_blank');
                     const currentDate = new Date();
@@ -262,7 +284,7 @@ async function sendQuery() {
                     printWindow.print();
                 });
 
-                // Save as HTML functionality
+                
                 document.getElementById('saveBtn').addEventListener('click', () => {
                     const blob = new Blob([cleanedHtml], {type: 'text/html'});
                     const a = document.createElement('a');
