@@ -1,5 +1,6 @@
 let generatedActivity = "";
 let currentActivity = "";
+let includeAnswers = false; // Global variable to store the "include answers" state
 
 function initializeEventListeners() {
     document.getElementById('homeLink').addEventListener('click', function(e) {
@@ -58,34 +59,54 @@ function initializeEventListeners() {
     document.getElementById('loadActivityBtn').addEventListener('click', sendQuery);
     document.getElementById('translateButton').addEventListener('click', translateAndListen);
 
-
     document.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         const selectedText = window.getSelection().toString();
+        if (!selectedText) return; // If no text is selected, do nothing
+
         const menu = document.createElement('div');
-        menu.innerHTML = '<div style="cursor:pointer;padding:5px;background:white;border:1px solid black;">Copy</div>';
+        menu.innerHTML = `
+            <div id="copyButton" style="cursor:pointer;padding:5px;background:white;border:1px solid black;">Copy</div>
+            <div id="printButton" style="cursor:pointer;padding:5px;background:white;border:1px solid black;">Print</div>
+        `;
         menu.style.position = 'fixed';
         menu.style.zIndex = '1000';
         menu.style.left = e.clientX + 'px';
         menu.style.top = e.clientY + 'px';
         document.body.appendChild(menu);
 
-        menu.firstChild.addEventListener('click', function() {
-            if (selectedText) {
-                navigator.clipboard.writeText(selectedText).then(() => {
-                    console.log('Text copied to clipboard');
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
-                });
-            }
+        document.getElementById('copyButton').addEventListener('click', function() {
+            navigator.clipboard.writeText(selectedText).then(() => {
+                console.log('Text copied to clipboard');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
             document.body.removeChild(menu);
         });
 
-        document.addEventListener('click', function removeMenu() {
-            if (menu && menu.parentNode) {
+        document.getElementById('printButton').addEventListener('click', function() {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>EduQuest</title>
+                </head>
+                <body>
+                    <pre>${selectedText}</pre>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+            printWindow.close();
+            document.body.removeChild(menu);
+        });
+
+        document.addEventListener('click', function removeMenu(event) {
+            if (!menu.contains(event.target)) {
                 document.body.removeChild(menu);
+                document.removeEventListener('click', removeMenu);
             }
-            document.removeEventListener('click', removeMenu);
         });
     }, false);
 
@@ -96,6 +117,11 @@ function initializeEventListeners() {
             return false;
         }
     };
+
+    // Add event listener for the "include answers" checkbox
+    document.getElementById('includeAnswersCheckbox').addEventListener('change', function(e) {
+        includeAnswers = e.target.checked;
+    });
 }
 
 function hideAllContent() {
@@ -112,17 +138,20 @@ function showOptions(type) {
     const nonLanguageOptions = document.getElementById('NonLanguageOptions');
     const ukCurriculumLevel = document.getElementById('UKNationalCurriculumLevel');
     const keywordInput = document.getElementById('keywordInput');
+    const includeAnswersContainer = document.getElementById('includeAnswersContainer');
     
     if (type === 'language') {
         languageOptions.classList.remove('hidden');
         nonLanguageOptions.classList.add('hidden');
         ukCurriculumLevel.classList.add('hidden');
         keywordInput.classList.add('hidden');
+        includeAnswersContainer.classList.add('hidden');
     } else {
         languageOptions.classList.add('hidden');
         nonLanguageOptions.classList.remove('hidden');
         ukCurriculumLevel.classList.remove('hidden');
         keywordInput.classList.remove('hidden');
+        includeAnswersContainer.classList.remove('hidden');
     }
 }
 
@@ -158,12 +187,14 @@ async function sendQuery() {
             return;
         }
 
-        query = `In html, write a captivating ${length} word ${formtype} in ${language} using ${proficiency} level language. The ${formtype}'s genre should be ${genre}. A button should toggle the story from ${language} to english. Also put 5 multiple choice radiobutton questions which check the reader's understanding of the ${formtype}, with a score underneeth.`;
+        query = `In html, write a captivating ${length} word ${formtype} in ${language} using ${proficiency} level language (and emoticons). The ${formtype}'s genre should be ${genre}. A button should toggle the story from ${language} to english. Also put 5 multiple choice radiobutton questions (with emoticons) which check the reader's understanding of the ${formtype}, with a score underneath.`;
 
     } else {
         const keyword = document.getElementById('keywordInput').value.trim();
         const keywordPhrase = keyword ? `${keyword}` : '';
-        query = `In html, create a 10 question ${currentActivity} ${keywordPhrase} worksheet (with emoticons) for UK national curriculum ${document.getElementById('UKNationalCurriculumLevel').value}. Then at the bottom of the page write the answers.`;
+        const answersPhrase = includeAnswers ? "Then at the bottom of the page write the answers." : "Do not include answers for the questions.";
+        query = `In html, create a 10 question ${currentActivity} ${keywordPhrase} worksheet (with emoticons) for UK national curriculum ${document.getElementById('UKNationalCurriculumLevel').value}. ${answersPhrase}.`;
+
     }
 
     const API_KEY = window.API_KEY; 
@@ -193,7 +224,6 @@ async function sendQuery() {
         if (response.data && response.data.choices && response.data.choices.length > 0) {
             const fullResponse = response.data.choices[0].message.content;
             const htmlContent = fullResponse.match(/<html[\s\S]*?<\/html>/);
-            console.log("htmlContent: " + htmlContent);
 
             if (htmlContent && htmlContent.length > 0) {
                 // Save the full HTML content quietly in the background
@@ -244,6 +274,14 @@ async function sendQuery() {
                     <button id="saveBtn">Share activity as file</button>
                 `;
                 resultDiv.appendChild(buttonContainer);
+
+                // Add the tip text
+                const tipText = document.createElement('p');
+                tipText.style.marginTop = '10px';
+                tipText.style.fontSize = '0.9em';
+                tipText.style.fontStyle = 'italic';
+                tipText.textContent = "Tip: You can print selected text from the activity by selecting it first, then right click on it to print that selection.";
+                resultDiv.appendChild(tipText);
 
                 // Modify the event listener for the "Share activity as file" button
                 document.getElementById('saveBtn').addEventListener('click', () => {
