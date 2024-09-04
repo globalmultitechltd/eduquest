@@ -193,10 +193,24 @@ async function sendQuery() {
         if (response.data && response.data.choices && response.data.choices.length > 0) {
             const fullResponse = response.data.choices[0].message.content;
             const htmlContent = fullResponse.match(/<html[\s\S]*?<\/html>/);
+            console.log("htmlContent: " + htmlContent);
 
             if (htmlContent && htmlContent.length > 0) {
+                // Save the full HTML content quietly in the background
+                const debugBlob = new Blob([htmlContent[0]], { type: 'text/html' });
+                const debugUrl = URL.createObjectURL(debugBlob);
+                const debugLink = document.createElement('a');
+                debugLink.href = debugUrl;
+                debugLink.download = 'EduQuest_Activity.html';
+                document.body.appendChild(debugLink);
+                debugLink.click();
+                document.body.removeChild(debugLink);
+                URL.revokeObjectURL(debugUrl);
+
+                generatedActivity = htmlContent[0];  // Set generatedActivity to the full HTML content
+
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlContent[0], 'text/html');
+                const doc = parser.parseFromString(generatedActivity, 'text/html');
                 
                 const scripts = doc.getElementsByTagName('script');
                 for (let script of scripts) {
@@ -216,8 +230,8 @@ async function sendQuery() {
                     .replace(/<\/p><p>/g, '</p>\n<p>')  
                     .trim();
 
-                resultDiv.innerHTML = cleanedHtml;
-                generatedActivity = cleanedHtml;
+                resultDiv.innerHTML = cleanedHtml;  // Display the cleaned HTML
+
                 translateButton.disabled = false;
 
                 
@@ -230,6 +244,11 @@ async function sendQuery() {
                     <button id="saveBtn">Share activity as file</button>
                 `;
                 resultDiv.appendChild(buttonContainer);
+
+                // Modify the event listener for the "Share activity as file" button
+                document.getElementById('saveBtn').addEventListener('click', () => {
+                    alert('Activity has been saved as EduQuest_Activity.html in your downloads folder');
+                });
 
                 
                 document.getElementById('printBtn').addEventListener('click', () => {
@@ -282,17 +301,6 @@ async function sendQuery() {
                     `);
                     printWindow.document.close();
                     printWindow.print();
-                });
-
-                
-                document.getElementById('saveBtn').addEventListener('click', () => {
-                    const blob = new Blob([cleanedHtml], {type: 'text/html'});
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = 'EduQuest_Activity.html';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
                 });
             } else {
                 resultDiv.innerHTML = `No HTML content found in the API response: ${fullResponse}`;
